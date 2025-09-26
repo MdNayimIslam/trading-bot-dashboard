@@ -10,7 +10,6 @@ except Exception:
 log = logging.getLogger("live_broker")
 log.setLevel(logging.INFO)
 
-
 class LiveBroker:
     def __init__(
         self,
@@ -31,7 +30,7 @@ class LiveBroker:
         if not hasattr(ccxt, exchange_id):
             raise ValueError(f"Exchange {exchange_id} not supported by ccxt.")
 
-        # ✅ Initialize exchange
+        # ✅ adjustForTimeDifference
         ex = getattr(ccxt, exchange_id)({
             "apiKey": api_key or os.getenv("API_KEY", ""),
             "secret": secret or os.getenv("API_SECRET", ""),
@@ -39,12 +38,12 @@ class LiveBroker:
             "enableRateLimit": True,
             "options": {
                 "adjustForTimeDifference": True,
-                "recvWindow": recv_window_ms,
+                "recvWindow": recv_window_ms   # ✅ set recvWindow here
             },
             **kwargs,
         })
 
-        # ✅ Sandbox/Testnet
+        # ✅ Sandbox mode
         if sandbox and hasattr(ex, "set_sandbox_mode"):
             ex.set_sandbox_mode(True)
             ex.urls['api'] = 'https://testnet.binance.vision'
@@ -67,10 +66,11 @@ class LiveBroker:
             else:
                 raise
 
-        # ✅ Time sync
+        # ✅ Sync clock drift & override ccxt clock
         if self.enable_time_sync and hasattr(self.exchange, "fetch_time"):
             try:
                 self._sync_time()
+                # Force ccxt to use drift-adjusted clock
                 self.exchange.milliseconds = self.now_ms
             except Exception as e:
                 log.warning(f"Time sync failed: {e}")
@@ -120,8 +120,7 @@ class LiveBroker:
             return float(price)
 
     # -------- Public REST ops --------
-    def create_order(self, symbol: str, side: str, type_: str, amount: float,
-                     price: Optional[float] = None, params: Optional[Dict[str, Any]] = None):
+    def create_order(self, symbol: str, side: str, type_: str, amount: float, price: Optional[float] = None, params: Optional[Dict[str, Any]] = None):
         params = dict(params or {})
         if "clientOrderId" not in params:
             params["clientOrderId"] = self.new_client_order_id()
@@ -131,10 +130,12 @@ class LiveBroker:
         if price is not None and type_.lower() != "market":
             px = self._price_to_precision(symbol, price)
 
+        # 🚀 Place order via ccxt
         order = self._retry(self.exchange.create_order, symbol, type_, side, amt, px, params)
 
+        # ✅ Normalize order id
         order_id = order.get("id") or order.get("orderId") or params["clientOrderId"]
-        order["orderId"] = order_id
+        order["orderId"] = order_id   # সবসময় থাকবে
 
         return order
 
@@ -153,7 +154,7 @@ class LiveBroker:
         except Exception as e:
             if self.exchange.urls.get('api') == 'https://testnet.binance.vision':
                 log.warning("Testnet balance fetch failed, returning dummy balance")
-                return {"USDT": {"free": 10000, "used": 0, "total": 10000}}
+                return {"free": {"USDT": 10000}, "used": {"USDT": 0}, "total": {"USDT": 10000}}
             else:
                 raise
 
