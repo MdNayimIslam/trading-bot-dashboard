@@ -1,0 +1,6 @@
+streamlit
+pandas
+requests
+plotly
+pyyaml
+sqlite3-binary

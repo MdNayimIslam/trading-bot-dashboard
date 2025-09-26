@@ -1,0 +1,57 @@
+api:
+  provider: "saxo"
+
+  client_id: "9ddc36b799f4b14bebc047fb4c5b90e"
+  client_secret: "62909370d99f49629d6288c7e63e2a18"
+
+  redirect_uri: "http://localhost:8501/callback"
+
+  auth_url: "https://sim.logonvalidation.net/authorize"
+  token_url: "https://sim.logonvalidation.net/token"
+  base_url: "https://gateway.saxobank.com/sim/openapi"
+
+  account_key: "PUT_YOUR_ACCOUNT_KEY_HERE"
+
+  sandbox: true   
+
+  symbol: "EURUSD"     
+  asset_type: "FxSpot" 
+
+
+paper:
+  starting_balance: 10000
+
+
+risk:
+  initial_capital: 10000
+  fee_pct: 0.0004
+  slippage_pct: 0.0002
+  max_leverage: 1.0
+  risk_per_trade: 0.01
+  atr_stop_mult: 1.5
+  tp_mult: 1.5
+  max_open_trades: 3
+  daily_loss_limit: 5
+
+
+fees:
+  fee_pct: 0.0004
+  slippage_pct: 0.0002
+
+
+strategy:
+  name: rsi_ma
+  ma_len: 100
+  rsi_len: 10
+  atr_len: 14
+  use_atr_filter: false
+  atr_thresh: 0.008
+  rsi_buy_below: 40
+  rsi_sell_above: 60
+  lookback: 120
+
+
+trade:
+  quantity_pct: 0.95
+  stop_loss_pct: 0.01
+  take_profit_pct: 0.20
