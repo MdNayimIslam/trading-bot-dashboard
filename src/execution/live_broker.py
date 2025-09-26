@@ -43,10 +43,13 @@ class LiveBroker:
             **kwargs,
         })
 
-        # ✅ Sandbox mode
+        # ✅ Sandbox setup
         if sandbox and hasattr(ex, "set_sandbox_mode"):
             ex.set_sandbox_mode(True)
+            # Private endpoints → testnet
             ex.urls['api'] = 'https://testnet.binance.vision'
+            # Public endpoints → mainnet
+            ex.urls['public'] = 'https://api.binance.com'
 
         self.exchange = ex
         self.retries = retries
@@ -57,7 +60,6 @@ class LiveBroker:
         self._last_server_time = None
         self._time_drift_ms = 0
 
-        # ✅ Load markets safely
         try:
             self.exchange.load_markets()
         except Exception as e:
@@ -70,7 +72,6 @@ class LiveBroker:
         if self.enable_time_sync and hasattr(self.exchange, "fetch_time"):
             try:
                 self._sync_time()
-                # Force ccxt to use drift-adjusted clock
                 self.exchange.milliseconds = self.now_ms
             except Exception as e:
                 log.warning(f"Time sync failed: {e}")
@@ -130,13 +131,10 @@ class LiveBroker:
         if price is not None and type_.lower() != "market":
             px = self._price_to_precision(symbol, price)
 
-        # 🚀 Place order via ccxt
         order = self._retry(self.exchange.create_order, symbol, type_, side, amt, px, params)
 
-        # ✅ Normalize order id
         order_id = order.get("id") or order.get("orderId") or params["clientOrderId"]
-        order["orderId"] = order_id   # সবসময় থাকবে
-
+        order["orderId"] = order_id
         return order
 
     def cancel_order(self, id: str, symbol: str, params: Optional[Dict[str, Any]] = None):
@@ -154,7 +152,7 @@ class LiveBroker:
         except Exception as e:
             if self.exchange.urls.get('api') == 'https://testnet.binance.vision':
                 log.warning("Testnet balance fetch failed, returning dummy balance")
-                return {"free": {"USDT": 10000}, "used": {"USDT": 0}, "total": {"USDT": 10000}}
+                return {"USDT": {"free": 10000, "used": 0, "total": 10000}}
             else:
                 raise
 
